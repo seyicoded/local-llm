@@ -7,17 +7,7 @@ import "dotenv/config"
 // const {google} = require('googleapis');
 
 export const getGoogleAuth = async (request: Request|any, response: Response)=>{
-    // validate 
-    // const {error, value} = Joi.object(createGroupScheme).validate(data)
-
-    // return WrapperResponse("error", {
-    //     message: error.message,
-    //     status: "failed"
-    // }, response)
     
-    // 
-    // console.log(group)
-
     const oAuth2Client = new OAuth2Client(
         process.env.GOOGLE_CLIENT_ID,
         process.env.GOOGLE_SECRET_KEY,
@@ -34,6 +24,27 @@ export const getGoogleAuth = async (request: Request|any, response: Response)=>{
         status: "success",
         payload: {
             data: authorizeUrl
+        }
+    }, response)
+}
+
+export const getGoogleToken = async (request: Request|any, response: Response)=>{
+    
+    const {code} = request.body;
+    
+    const oAuth2Client = new OAuth2Client(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_SECRET_KEY,
+        "http://localhost:4500/auth/google/callback"
+    );
+
+    const __token = await oAuth2Client.getToken(code);
+
+    return WrapperResponse("success", {
+        message: "Linked Fetched Successfully",
+        status: "success",
+        payload: {
+            data: __token
         }
     }, response)
 }

@@ -1,10 +1,11 @@
 import express from 'express'
-import { getGoogleAuth } from '../controllers/google.controller';
+import { getGoogleAuth, getGoogleToken } from '../controllers/google.controller';
 
 const router = express.Router()
 
 // guest route
 router.get("/google/get-auth", getGoogleAuth);
+router.post("/google/get-auth", getGoogleToken);
 
 // **** otp **** 
 // router.post("/otp/email", requestEmailOtpController);
