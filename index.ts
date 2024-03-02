@@ -1,5 +1,5 @@
 import express, {Express, Request, Response, urlencoded} from 'express';
-import dB from './models/index'
+// import dB from './models/index'
 import router from './src/routes';
 import winston from 'winston'
 import 'dotenv/config'
@@ -23,10 +23,10 @@ app.use(express.json());
 
 (async()=>{
   // init database
-  await dB.sequelize.sync({force: true});
-  console.log("[database]: Done Syncing")
+  // await dB.sequelize.sync({force: true});
+  // console.log("[database]: Done Syncing")
   // create default data
-  run();
+  // run();
 })();
 
 // app.use(morgan(':method :url :status :res[content-length] - :response-time ms'));
