@@ -7,6 +7,7 @@ const router = express.Router()
 router.get("/google/get-auth", getGoogleAuth);
 router.post("/google/get-auth", getGoogleToken);
 router.get("/google/get-mails", getGoogleMails);
+router.get("/google/get-mails-summary", getGoogleMails);
 
 // **** otp **** 
 // router.post("/otp/email", requestEmailOtpController);
