@@ -1,5 +1,5 @@
 import express from 'express'
-import { getGoogleAuth, getGoogleMails, getGoogleToken } from '../controllers/google.controller';
+import { getGoogleAuth, getGoogleMails, getGoogleMailsSummary, getGoogleToken } from '../controllers/google.controller';
 
 const router = express.Router()
 
@@ -7,7 +7,7 @@ const router = express.Router()
 router.get("/google/get-auth", getGoogleAuth);
 router.post("/google/get-auth", getGoogleToken);
 router.get("/google/get-mails", getGoogleMails);
-router.get("/google/get-mails-summary", getGoogleMails);
+router.get("/google/get-mails-summary", getGoogleMailsSummary);
 
 // **** otp **** 
 // router.post("/otp/email", requestEmailOtpController);

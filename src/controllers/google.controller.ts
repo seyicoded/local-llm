@@ -61,8 +61,7 @@ export const getGoogleToken = async (request: Request|any, response: Response)=>
     }, response)
 }
 
-export const getGoogleMails = async (request: Request|any, response: Response)=>{
-    
+const getGoogleMailsRaw = async (request: Request|any, response: Response) =>{
     const {userRefreshToken} = request.body;
 
     const auth = getoAuth2Client();
@@ -107,6 +106,13 @@ export const getGoogleMails = async (request: Request|any, response: Response)=>
 
     console.log("....")
 
+    return mails;
+}
+
+export const getGoogleMails = async (request: Request|any, response: Response)=>{
+    
+    const mails = await getGoogleMailsRaw(request, response);
+
     return WrapperResponse("success", {
         message: "Linked Fetched Successfully",
         status: "success",
@@ -117,20 +123,26 @@ export const getGoogleMails = async (request: Request|any, response: Response)=>
     }, response)
 }
 
-const getGoogleMailsSummary = async(request: Request|any, response: Response)=>{
-    const mails: any = await getGoogleMails(request, response);
+export const getGoogleMailsSummary = async(request: Request|any, response: Response)=>{
 
-    if(mails.status != "success"){
+    console.log("00")
+    const mails: any = await getGoogleMailsRaw(request, response);
+    console.log("01")
 
-    }
+    // if(mails != "success"){
+    //     return response.status(500).json("an error occurred");
+    // }
 
-    const myMails = mails.payload.data;
+    const myMails = mails || [];
+    console.log("11")
+    const processedData = await fetchRawSummaryAI(myMails);
+    console.log("22")
 
     return WrapperResponse("success", {
         message: "Linked Fetched Successfully",
         status: "success",
         payload: {
-            data: myMails
+            data: processedData
             // data: mess
         }
     }, response);
@@ -160,69 +172,86 @@ const fetchRawSummaryAI = async (myMails: myMailsProps[])=>{
 
     });
 
-    console.log('before AIData');
-    // using ai to analyse
-    const AIData  = await axios({
-        url: 'https://api.openai.com/v1/chat/completions',
-        method: 'post',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${OPENAI_API_KEY}`
-        },
-        data: {
-            "model": (myTranscriptData.length < 4097) ? 'gpt-3.5-turbo' : "gpt-3.5-turbo-16k-0613",
-            "messages": [
-                {
-                    "role": "user",
-                    "content": `generate data extrememly summarized in this pattern: “Give me a summary of last week” 
-                    I will give you a breakdown of your calendar
-                    
-                    Meetings
-                    You had 8 meetings 
-                    You accepted 5, declined 1, 2 with no response
-                    Last week Thursday you had “Meeting title” with Idris & Seyi
-                    You discussed (summary of meeting)
-                    On Mon 24th, you went to “Location in meeting” for “Meeting title”
-                    
-                    I can also check your email without invading your privacy
-                    Privacy & safety is important to us with end-to-end encryption and your summary is only visible to you
-                    You can set a password for future email summaries
-                    
-                    Gmail
-                    Here’s a summary of your email broken down into categories
-                    48 receipts, with a total of $XXX from Careem, Talabat & more
-                    Food: $XXX, Software: $XX, Insurance $X
-                    🧾 5 invoices from Github, Figma, Bing & more
-                    Paid 3, 1 invoice is due next week, 0 overdue
-                    🤑 12 bank transfers with a total of $XXX
-                    Outgoing: $XXX
-                    Incoming: $XXX
-                    ✈️ 2 travel itinerary
-                    Upcoming flight to Amsterdam next week Monday
-                    💼 5 new jobs listing from Linkedin, Indeed and +3 more
-                    ✉️ 2 emails sent are still unread
-                    29 documents were shared with you via G Drive, Notion +27
-                    Firstname Lastname shared “File title”
-                    🎨 117 Comments on files from Figma, G Doc / Slides & more
-                    Figma comments on “Project title” from “Firstname  Lastname” and 10 others
-                    Firstname Lastname: Change design title 
-                    359 Direct messages on Slack, Linkedin, Teams & more
-                    Linkedin: 120 direct messages 
-                    Slack: 56 messages on 35 channels
-                    Teams: 9 files were shared with you
-                    1,985 notifications from Facebook, Instagram, twitter & more
-                    217 vouchers worth $XXX from Asos, Gucci, Zara & more`
-                },
-                {
-                    "role": "user",
-                    "content": `here's the data ${((myTranscriptData.length > 16250)) ? myTranscriptData.substring(0, 16250) : myTranscriptData}`
-                },
-            ],
-            "temperature": 0.2
-        }
-    });
+    console.log('before AIData', myTranscriptData.length);
+    const r = [];
 
-    return AIData?.data;
+    const myTranscriptDatas = divideString(myTranscriptData, 16250);
+    
+    for (let i = 0; i < myTranscriptDatas.length; i++) {
+        const myTranscriptData = myTranscriptDatas[i];
+        
+        try {
+            // using ai to analyse
+            const AIData  = await axios({
+                url: 'https://api.openai.com/v1/chat/completions',
+                method: 'post',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${OPENAI_API_KEY}`
+                },
+                data: {
+                    // "model": (myTranscriptData.length < 4097) ? 'gpt-3.5-turbo' : "gpt-3.5-turbo-16k-0613",
+                    // "model": "gpt-4-vision-preview",
+                    "model": "gpt-3.5-turbo-16k-0613",
+                    "messages": [
+                        // {
+                        //     "role": "user",
+                        //     "content": `generate data extremely summarized in this pattern: 
+                        //     Here's a breakdown
+                            
+                        //     Meetings
+                        //     You had 8 meetings 
+                        //     You accepted 5, declined 1, 2 with no response
+                        //     Last week Thursday you had “Meeting title” with Idris & Seyi
+                        //     You discussed (summary of meeting)
+                        //     On Mon 24th, you went to “Location in meeting” for “Meeting title”
+                            
+                        //     I can also check your email without invading your privacy
+                        //     Privacy & safety is important to us with end-to-end encryption and your summary is only visible to you
+                        //     You can set a password for future email summaries
+                            
+                        //     Gmail
+                        //     Here’s a summary of your email broken down into categories
+                        //     48 receipts, with a total of $XXX from Careem, Talabat & more
+                        //     Food: $XXX, Software: $XX, Insurance $X
+                        //     🧾 5 invoices from Github, Figma, Bing & more
+                        //     Paid 3, 1 invoice is due next week, 0 overdue
+                        //     🤑 12 bank transfers with a total of $XXX
+                        //     Outgoing: $XXX
+                        //     Incoming: $XXX`
+                        // },
+                        // {
+                        //     "role": "user",
+                        //     "content": `here's the data ${((myTranscriptData.length > 16250)) ? myTranscriptData.substring(0, 16250) : myTranscriptData}`
+                        // },
+                        {
+                            "role": "user",
+                            "content": `generate data extremely summarized to just one line onle with title for each: 
+                            
+                            Here is the data to summarize: ${myTranscriptData}
+                            `
+    
+                        },
+                        // Here's the data: ${myTranscriptData}
+                        // Here's the data: ${((myTranscriptData.length > 16250)) ? myTranscriptData.substring(0, 16250) : myTranscriptData}
+                    ],
+                    "temperature": 0.2
+                }
+            });
+        
+            // return AIData?.data;
+            console.log(AIData?.data?.choices[0].message?.content, "\n");
+            r.push(AIData?.data);
+            
+        } catch (error) {
+            return {
+                error
+            };
+        }
+
+    }
+
+    return r;
 }
 
 const processString = (message: string)=>{
@@ -251,4 +280,14 @@ const replaceAll = (inputStr: string, oldSubstring: string, newSubstring: string
     // Use regular expression with global flag to replace all occurrences
     const regex = new RegExp(oldSubstring, 'g');
     return inputStr.replace(regex, newSubstring);
+}
+
+const divideString = (inputStr, maxLength) => {
+    const substrings = [];
+    
+    for (let i = 0; i < inputStr.length; i += maxLength) {
+      substrings.push(inputStr.substring(i, i + maxLength));
+    }
+  
+    return substrings;
 }

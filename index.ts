@@ -7,8 +7,16 @@ import { run } from './src/helper/defaultRunner';
 import path from 'path';
 import morgan from 'morgan';
 
+// import chalk from 'chalk';
+// const chalk = import("chalk");
+// const chalk = require("chalk");
+
 const app: Express = express();
 const port = process.env.PORT || 3000;
+
+// const log = console.log;
+// log(chalk.blue.bgRed.bold("reached"));
+// console.log = (...r)=> log(chalk.blue.bgRed.bold(r));
 
 app.use(urlencoded({
     extended: false
