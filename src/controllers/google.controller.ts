@@ -74,6 +74,7 @@ const getGoogleMailsRaw = async (request: Request|any, response: Response) =>{
         userId: 'me',
         // q: "in:inbox after:2014/02/26 before:2014/03/04"
         q: "in:INBOX after:2024/02/26 before:2024/03/04"
+        // q: "in:INBOX after:2024/02/20 before:2024/03/04"
         // fields: "snippet"
     });
 
@@ -226,7 +227,7 @@ const fetchRawSummaryAI = async (myMails: myMailsProps[])=>{
                         // },
                         {
                             "role": "user",
-                            "content": `generate data extremely summarized to just one line onle with title for each: 
+                            "content": `generate data extremely summarized to just one line only with title for each (note: summary must not exceed 1 line, avoid duplication/repetition, make it also extremely short and only return the most important logically): 
                             
                             Here is the data to summarize: ${myTranscriptData}
                             `
@@ -240,7 +241,7 @@ const fetchRawSummaryAI = async (myMails: myMailsProps[])=>{
             });
         
             // return AIData?.data;
-            console.log(AIData?.data?.choices[0].message?.content, "\n");
+            // console.log(AIData?.data?.choices[0].message?.content, "\n");
             r.push(AIData?.data);
             
         } catch (error) {
@@ -251,7 +252,52 @@ const fetchRawSummaryAI = async (myMails: myMailsProps[])=>{
 
     }
 
-    return r;
+    // further process summary 
+    let partSummarySum = "";
+    for (let i = 0; i < r.length; i++) {
+        const part = r[i]?.choices[0]?.message?.content;
+        partSummarySum += `${part} `; 
+    }
+
+    let ret = null;
+    try {
+        // using ai to analyse
+        const AIData  = await axios({
+            url: 'https://api.openai.com/v1/chat/completions',
+            method: 'post',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${OPENAI_API_KEY}`
+            },
+            data: {
+                "model": "gpt-3.5-turbo-16k-0613",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": `generate data extremely summarized with title for each (note: avoid duplication/repetition, make the total response also extremely short and only return the most important logically): 
+                        
+                        Here is the data to summarize: ${partSummarySum}.
+
+                        Please categorized the resulting summarized data into relatable groups.
+                        `
+
+                    },
+                ],
+                "temperature": 0.2
+            }
+        });
+    
+        // return AIData?.data;
+        console.log(AIData?.data?.choices[0].message?.content, "\n");
+        ret = AIData?.data;
+        
+    } catch (error) {
+        return {
+            error
+        };
+    }
+
+    return ret;
 }
 
 const processString = (message: string)=>{
