@@ -1,5 +1,9 @@
-import express from 'express'
+import express, { Request, Response } from 'express'
 import { getGoogleAuth, getGoogleMails, getGoogleMailsSummary, getGoogleToken } from '../controllers/google.controller';
+import { LZ77 } from '../helper/lz77.encoder';
+import { huffmanCompress } from '../helper/huffman.encoder';
+import { burrowsWheelerTransform, runLengthDecode, runLengthEncode } from '../helper/burrow-wheeler.encoder';
+import { LZW } from '../helper/lzw.encoder';
 
 const router = express.Router()
 
@@ -8,6 +12,32 @@ router.get("/google/get-auth", getGoogleAuth);
 router.post("/google/get-auth", getGoogleToken);
 router.get("/google/get-mails", getGoogleMails);
 router.get("/google/get-mails-summary", getGoogleMailsSummary);
+router.get("/google/testcode", (req: Request, res: Response)=>{
+    const text = req.query?.text;
+    // let r = LZ77.compress(text);
+    // console.log(r);
+    
+    // const { huffmanTree, codeMap, compressed: r } = huffmanCompress(text);
+    // console.log(r);
+    
+    // const { transformed, index } = burrowsWheelerTransform(text);
+    
+    // // const r = runLengthEncode(transformed);
+    // const r = runLengthEncode(text);
+    // const d = runLengthDecode(r);
+    // console.log('Run-Length Encoded String:', r);
+    
+    let r = LZW.compress(text);
+    let d = LZW.decompress(r);
+    console.log(r, d);
+    // console.log(r);
+
+    res.send({
+        original: text,
+        encoded: r,
+        decoded: d
+    });
+});
 
 // **** otp **** 
 // router.post("/otp/email", requestEmailOtpController);
