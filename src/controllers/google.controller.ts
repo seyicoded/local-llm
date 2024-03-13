@@ -5,6 +5,7 @@ import { google } from 'googleapis';
 import {GoogleAuth, OAuth2Client} from 'google-auth-library';
 import "dotenv/config";
 import axios from "axios";
+import { transactionFilter, transactionFilterSecond } from "../helper/mail.filter";
 const chalk = require('chalk');
 
 var striptags = require('striptags');
@@ -83,7 +84,8 @@ const getGoogleMailsRaw = async (request: Request|any, response: Response) =>{
         // q: "in:inbox after:2014/02/26 before:2014/03/04"
         // q: "in:INBOX after:2024/02/26 before:2024/03/04"
         // q: "in:INBOX after:2024/02/20 before:2024/03/04"
-        q: "in:INBOX after:2024/03/07 before:2024/03/08"
+        q: "in:INBOX after:2024/03/01 before:2024/03/02"
+        // q: "in:INBOX after:2024/03/04 before:2024/03/05"
         // fields: "snippet"
     });
 
@@ -138,15 +140,25 @@ export const getGoogleMails = async (request: Request|any, response: Response)=>
 
 export const getGoogleMailsSummary = async(request: Request|any, response: Response)=>{
 
-    console.log("00")
     const mails: any = await getGoogleMailsRaw(request, response);
-    console.log("01")
 
-    // if(mails != "success"){
-    //     return response.status(500).json("an error occurred");
-    // }
+    console.log(mails.length, "for all")
 
-    const myMails = mails || [];
+    const filteredFinance = await filterForFinance(mails);
+
+    console.log(filteredFinance.length, "for filteredFinance")
+    // process.exit(0);
+    // remove later
+    // return WrapperResponse("success", {
+    //     message: "Linked Fetched Successfully",
+    //     status: "success",
+    //     payload: {
+    //         data: filteredFinance
+    //         // data: mess
+    //     }
+    // }, response);
+
+    const myMails = filteredFinance || [];
     console.log("11")
     const processedData = await fetchRawSummaryAI(myMails);
     console.log("22")
@@ -219,7 +231,14 @@ const fetchRawSummaryAI = async (myMails: myMailsProps[])=>{
                             "role": "user",
                             "content": `generate data extremely summarized to just one line only with title for each (note: summary must not exceed 1 line, avoid duplication/repetition, make it also extremely short and only return the most important logically, also only billing amount from actual transaction shouldn't be ignored while a cumulative costing sum of related items should be provided, make every category shorten please): 
                             
-                            Here is the data to summarize: ${filterString(myTranscriptData)}
+                            Here is the data to summarize: ${filterString(myTranscriptData)}.
+
+                            after logical summary has been done, please format the response into this format below only:
+
+                            x total bank transfers with a total of $XXX credit and debit
+                            x recharge transactions from xxx, xxx
+                            Outcoming/Debit Alert: $XXX, from xxx, xxx
+                            Incoming/Credit Alert: $XXX, from xxx, xxx
                             `
     
                         },
@@ -336,4 +355,52 @@ const filterString = (inputString) => {
       .split('')
       .filter(char => allowedChars.includes(char))
       .join('');
+}
+
+const filterForFinance = async (mails: any[])=>{
+    // first filter
+    let arr = mails.filter(mail => {
+        // transactionFilter.split()
+        let transactionFilterArr = transactionFilter.split(",").map(item => item.trim()).find(item =>{
+            return mail.title.includes(item)
+        });
+
+        let __r = (transactionFilterArr != undefined);
+        // if(__r){
+        //     if(transactionFilterArr == 'account'){
+        //         console.log(mail.title)
+        //     }
+        // }
+        return __r;
+    });
+
+    // second filter
+    arr = arr.filter(mail => {
+        // transactionFilter.split()
+        let transactionFilterArr = transactionFilterSecond.split(",").map(item => item.trim()).find(item =>{
+            return mail.title.includes(item)
+        });
+
+        let __r = (transactionFilterArr != undefined);
+        if(__r){
+            // console.log(transactionFilterArr)
+            if(transactionFilterArr == 'account'){
+                // console.log(mail.title)
+            }
+        }
+        return __r;
+    });
+
+    // third, filter otp
+    arr = arr.filter(mail => {
+        // transactionFilter.split()
+        let transactionFilterArr = "otp".split(",").map(item => item.trim()).find(item =>{
+            return (!mail.title.toLowerCase().includes(item))
+        });
+        let __r = (transactionFilterArr != undefined);
+        return __r;
+    });
+
+
+    return arr;
 }
