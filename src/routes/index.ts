@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express'
-import { getGoogleAuth, getGoogleMails, getGoogleMailsSummary, getGoogleToken } from '../controllers/google.controller';
+import { createMeetingSpace, getGoogleAuth, getGoogleCalendar, getGoogleMails, getGoogleMailsSummary, getGoogleToken, getMeetingConference, getMeetingConferenceParticipant, getMeetingConferenceTranscript, getMeetingSpace, getSummarydata } from '../controllers/google.controller';
 import { LZ77 } from '../helper/lz77.encoder';
 import { huffmanCompress } from '../helper/huffman.encoder';
 import { burrowsWheelerTransform, runLengthDecode, runLengthEncode } from '../helper/burrow-wheeler.encoder';
@@ -10,8 +10,23 @@ const router = express.Router()
 // guest route
 router.get("/google/get-auth", getGoogleAuth);
 router.post("/google/get-auth", getGoogleToken);
+
+// calendar
+router.get("/google/get-calendar", getGoogleCalendar);
+// gmail
 router.get("/google/get-mails", getGoogleMails);
 router.get("/google/get-mails-summary", getGoogleMailsSummary);
+
+// gmeet
+router.post("/google/create-meeting-space", createMeetingSpace);
+router.get("/google/get-meeting-space", getMeetingSpace);
+router.get("/google/get-meeting-conference", getMeetingConference);
+router.get("/google/get-participant-conference", getMeetingConferenceParticipant);
+router.get("/google/get-conference-transcript", getMeetingConferenceTranscript);
+
+
+router.get("/summary-fetcher", getSummarydata);
+
 router.get("/google/testcode", (req: Request, res: Response)=>{
     const text = req.query?.text;
     // let r = LZ77.compress(text);

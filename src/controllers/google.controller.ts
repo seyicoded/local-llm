@@ -6,6 +6,10 @@ import {GoogleAuth, OAuth2Client} from 'google-auth-library';
 import "dotenv/config";
 import axios from "axios";
 import { transactionFilter, transactionFilterSecond } from "../helper/mail.filter";
+import {SpacesServiceClient, ConferenceRecordsServiceClient} from '@google-apps/meet'
+import { toBeSummarized } from "../constant/summary-raw";
+import moment from "moment";
+
 const chalk = require('chalk');
 
 var striptags = require('striptags');
@@ -32,7 +36,7 @@ export const getGoogleAuth = async (request: Request|any, response: Response)=>{
 
     const authorizeUrl = oAuth2Client.generateAuthUrl({
         access_type: 'offline',
-        scope: 'https://www.googleapis.com/auth/gmail.readonly',
+        scope: ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/meetings.space.created', 'https://www.googleapis.com/auth/drive.readonly'],
     });
 
     return WrapperResponse("success", {
@@ -66,6 +70,34 @@ export const getGoogleToken = async (request: Request|any, response: Response)=>
         status: "success",
         payload: {
             data: __token
+        }
+    }, response)
+}
+
+export const getGoogleCalendar = async (request: Request|any, response: Response) =>{
+    const {userRefreshToken} = request.body;
+
+    const auth = getoAuth2Client();
+
+    auth.setCredentials({ refresh_token: userRefreshToken });
+
+    const calendar = google.calendar({version: 'v3', auth});
+    // const mess = await gmail.users.messages.list();
+    const mess = await calendar.events.list({
+        calendarId: "primary",
+        timeMin: moment().isoWeekday(-7).toDate().toISOString(),
+        maxResults: 180,
+        singleEvents: true,
+        orderBy: 'startTime',
+    });
+
+
+    // return mess;
+    return WrapperResponse("success", {
+        message: "Data Fetched Successfully",
+        status: "success",
+        payload: {
+            data: mess
         }
     }, response)
 }
@@ -403,4 +435,157 @@ const filterForFinance = async (mails: any[])=>{
 
 
     return arr;
+}
+
+
+export const createMeetingSpace = async (request: Request|any, response: Response) =>{
+    const {userRefreshToken, space} = request.body;
+
+    const auth = getoAuth2Client();
+
+    auth.setCredentials({ refresh_token: userRefreshToken });
+
+    // Instantiates a client
+    const meetClient = new SpacesServiceClient({authClient: auth});
+
+    const mySpace = await meetClient.createSpace({});
+
+    console.log("....", mySpace)
+
+    return response.send(mySpace);
+}
+
+export const getMeetingSpace = async (request: Request|any, response: Response) =>{
+    const {userRefreshToken, space} = request.body;
+
+    const auth = getoAuth2Client();
+
+    auth.setCredentials({ refresh_token: userRefreshToken });
+
+    // Instantiates a client
+    const meetClient = new SpacesServiceClient({authClient: auth});
+
+    const mySpace = await meetClient.getSpace({
+        // name: "spaces/9GUGBewaRdQB"
+        name: space
+    });
+
+    console.log("....", mySpace)
+
+    return response.send(mySpace);
+}
+
+export const getMeetingConference = async (request: Request|any, response: Response) =>{
+    const {userRefreshToken} = request.body;
+
+    const auth = getoAuth2Client();
+
+    auth.setCredentials({ refresh_token: userRefreshToken });
+
+    // Instantiates a client
+    const meetClient = new ConferenceRecordsServiceClient({authClient: auth});
+
+    const myConference = await meetClient.listConferenceRecords();
+
+    console.log("....", myConference)
+
+    return response.send(myConference);
+}
+
+export const getMeetingConferenceParticipant = async (request: Request|any, response: Response) =>{
+    const {userRefreshToken, conference_record} = request.body;
+
+    const auth = getoAuth2Client();
+
+    auth.setCredentials({ refresh_token: userRefreshToken });
+
+    // Instantiates a client
+    const meetClient = new ConferenceRecordsServiceClient({authClient: auth});
+
+    const myConference = await meetClient.listParticipants({
+        parent: `${conference_record}`
+    });
+
+    console.log("....", myConference)
+
+    return response.send(myConference);
+}
+
+export const getMeetingConferenceTranscript = async (request: Request|any, response: Response) =>{
+    const {userRefreshToken, conference_record} = request.body;
+
+    const auth = getoAuth2Client();
+
+    auth.setCredentials({ refresh_token: userRefreshToken });
+
+    // Instantiates a client
+    const meetClient = new ConferenceRecordsServiceClient({authClient: auth});
+
+    const myConference = await meetClient.listTranscripts({
+        parent: `${conference_record}`
+    });
+
+    console.log("....", myConference)
+
+    return response.send(myConference);
+}
+
+export const getSummarydata = async (request: Request|any, response: Response) =>{
+    try {
+        // const {data} = request.body;
+    
+        const myTranscriptData = ((toBeSummarized?.data || []).map(item => {
+            return `${item?.speaker}: ${(item?.words || [])?.map(__i => __i?.text)}.`
+        })).join(' ');
+    
+        console.log('before AIData', myTranscriptData.length);
+        // using ai to analyse
+        const AIData  = await axios({
+            url: 'https://api.openai.com/v1/chat/completions',
+            method: 'post',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${OPENAI_API_KEY}`
+            },
+            data: {
+                // "model": (myTranscriptData.length < 4097) ? 'gpt-3.5-turbo' : "gpt-4-turbo",
+                "model": (myTranscriptData.length < 4097) ? 'gpt-3.5-turbo' : "gpt-3.5-turbo",
+                "messages": [
+                    {
+                        "role": "user",
+                        // "content": `generate detailed participant summary content and detailed action items from the following data context, note that summary content and action items should both start with {started} and both end with {ended} independently. data is: ${((myTranscriptData.length > 16250)) ? myTranscriptData.substring(0, 16250) : myTranscriptData}`
+                        "content": `using the template below, all results must be in bullet points except TL;DR.
+                        MEETING INFO
+                        TL;DR:
+                        [Provide a brief summary or key takeaway of the meeting, highlighting the most significant discussions and outcomes.]
+                        SUMMARY:
+                        Bullet points descriptive meeting summaries, capturing discussions, decisions, and significant comments in a narrative style.
+                        KEY TOPICS:
+                        [Percentage] - [Topic]
+                        Add more as necessary...
+                        KEY DECISIONS:
+                        [Decision]: [Concise description]
+                        Add more as necessary...
+                        BLOCKERS:
+                        [Topic]: [Description]
+                        - @Name(s)
+                        Add more as necessary…
+                        ACTION ITEMS:
+                        [Action items]: [Concise description] - @ Name(s)
+                        Add more as necessary…
+                        
+                        Summarise the data provided below: ${myTranscriptData}`
+                    }
+                ],
+                "temperature": 0.2
+            }
+        });
+    
+        return response.send(AIData?.data?.choices[0]?.message.content);
+        
+    } catch (error) {
+        console.log(error)
+        console.log(JSON.stringify(error?.response?.data))
+        return response.send({error});
+    }
 }
