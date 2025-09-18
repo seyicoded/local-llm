@@ -1,22 +1,16 @@
 import express, {Express, Request, Response, urlencoded} from 'express';
 // import dB from './models/index'
-import router from './src/routes';
+import router from './src/routes/index.js';
 import winston from 'winston'
 import 'dotenv/config'
 import { run } from './src/helper/defaultRunner';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import morgan from 'morgan';
-
-// import chalk from 'chalk';
-// const chalk = import("chalk");
-// const chalk = require("chalk");
+import { loadPipelines } from './src/resources/xenova.js';
 
 const app: Express = express();
 const port = process.env.PORT || 3000;
-
-// const log = console.log;
-// log(chalk.blue.bgRed.bold("reached"));
-// console.log = (...r)=> log(chalk.blue.bgRed.bold(r));
 
 app.use(urlencoded({
     extended: false
@@ -26,8 +20,6 @@ app.use(express.json());
 
 // // init database
 // dB.sequelize.sync({alter: true});
-
-// // create default data
 
 (async()=>{
   // init database
@@ -43,6 +35,10 @@ app.use(morgan('dev'));
 // init route
 app.use(router);
 
+loadPipelines();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
 
