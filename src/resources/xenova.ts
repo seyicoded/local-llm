@@ -1,4 +1,5 @@
 import { pipeline } from "@xenova/transformers";
+import "dotenv/config"
 
 // Preload pipelines
 let pipelines: any = {};
@@ -6,12 +7,17 @@ let pipelines: any = {};
 export async function loadPipelines() {
   pipelines = {
     generator: await pipeline("text-generation", "Xenova/distilgpt2"),
-    corrector: await pipeline("text2text-generation", "Xenova/prithivida-grammar-error-correcter-v1"),
+    corrector: await pipeline("text2text-generation", "Xenova/flan-t5-small"),
     summarizer: await pipeline("summarization", "Xenova/distilbart-cnn-6-6"),
-    translator: await pipeline("translation", "Xenova/Helsinki-NLP-opus-mt-en-fr"),
+    translator: await pipeline("translation", "Xenova/mbart-large-50-many-to-many-mmt"),
     classifier: await pipeline("sentiment-analysis", "Xenova/distilbert-base-uncased-finetuned-sst-2-english"),
     qna: await pipeline("question-answering", "Xenova/distilbert-base-uncased-distilled-squad"),
     embedder: await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2"),
+    // chatbot: await pipeline("text2text-generation", (process.env.MODE == "production")  ? "Xenova/flan-t5-large" : "Xenova/flan-t5-base"),
+    chatbot: await pipeline("text-generation", "Xenova/TinyLlama-1.1B-Chat-v1.0", {quantized: true}),
+    // chatbot: await pipeline("text-generation", "Xenova/DeepSeek-R1-Distill-Qwen-1.5B-int8"),
+    
+    // chatbot: await pipeline("text2text-generation", "Xenova/flan-t5-large"),
   };
   console.log("✅ All pipelines loaded");
 

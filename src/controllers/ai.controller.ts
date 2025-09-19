@@ -3,8 +3,6 @@ import { WrapperResponse } from '../helper/wrapResponse';
 import 'dotenv/config'
 import { processChatCompletion } from '../services/ai.service';
 
-var jwt = require('jsonwebtoken');
-
 export const chatCompletion = async (request: Request, response: Response)=>{
     try {
         const res = await processChatCompletion(request?.body);
